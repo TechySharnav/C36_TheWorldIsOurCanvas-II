@@ -67,7 +67,7 @@ function draw() {
     })
   } */
   
-while(i<mousePos.length*3){
+while(i<mousePos.length){
     mousePos2Ref = database.ref('mousePosition/Position/'+i);
     mousePos2Ref.on("value",(data)=>{
        mouse2Ref = data.val();
