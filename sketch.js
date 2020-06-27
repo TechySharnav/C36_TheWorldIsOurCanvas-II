@@ -1,104 +1,99 @@
-var redBox, blueBox, yellowBox, resetBox;
+var database;
+
+var drawing = [];
+var currentPath = [];
+var isDrawing = false;
 var pointer;
-var database, mousePosRef, mouse2Ref;
-var mousePos = [];
-var MouseX, MouseY, mouseRef;
-var i = 0;
 
 function setup() {
-  createCanvas(400,400);
+  canvas = createCanvas(400, 400);
 
-  pointer = createSprite(0, 0, 5, 5);
-  pointer.shapeColor = "black";
+  canvas.mousePressed(startPath);
+  canvas.parent('canvascontainer');
+  canvas.mouseReleased(endPath);
 
-  redBox = createSprite(50,40,20,20);
-  redBox.shapeColor = "red";
+  var saveButton = select('#saveButton');
+  saveButton.mousePressed(saveDrawing)
 
-  greenBox = createSprite(150,40,20,20);
-  greenBox.shapeColor = "green";
+  database = firebase.database();
+  var ref = database.ref('drawings');
+  ref.on('value', gotData, errData);
+}
 
-  blueBox = createSprite(250,40,20,20);
-  blueBox.shapeColor = "blue";
+function startPath() {
+  isDrawing = true;
+  currentPath = [];
+  drawing.push(currentPath);
+}
 
-  resetBox = createSprite(350,40,20,20);
-
- database = firebase.database();
-
- mousePosRef = database.ref('mousePosition');
- mousePosRef.on("value",(data)=>{
-    mouseRef = data.val();
- })
- 
-//  mousePos2Ref = database.ref('mousePosition/Position');
-//  mousePos2Ref.on("value",(data)=>{
-//     mouse2Ref = data.val();
-//  })
-
-
+function endPath() {
+  isDrawing = false;
 }
 
 function draw() {
-  if(mouseIsPressed){
-      var point = {
-          x: mouseX,
-          y: mouseY
-      }
-      mousePos.push(point);
-  }
-    /* for(cod in mouse2Ref){
-      for(var i =  0; i < mousePos.length; i++){
-        pointer.x = cod.x;
-        pointer.y = cod.y;
-        console.log(cod[0].x);
-
-  } 
-  }  */
-
-  mousePosRef.set({
-    "Position": mousePos
-  });
-  
-  /* for(i = 0; i<mousePos.length;i++){
-    mousePos2Ref = database.ref('mousePosition/Position/'+i);
-    mousePos2Ref.on("value",(data)=>{
-       mouse2Ref = data.val();
-       pointer.x = mouse2Ref.x;
-       pointer.y = mouse2Ref.y;
-    })
-  } */
-  
-while(i<mousePos.length){
-    mousePos2Ref = database.ref('mousePosition/Position/'+i);
-    mousePos2Ref.on("value",(data)=>{
-       mouse2Ref = data.val();
-
-       pointer.x = mouse2Ref.x;
-       pointer.y = mouse2Ref.y;
-
-       //console.log(mouse2Ref.y);
-       i++;
-    })
+  background(255);
+  if (isDrawing) {
+    var point = {
+      x: mouseX,
+      y: mouseY
+    };
+    currentPath.push(point);
   }
 
-
-  drawSprites();
+  stroke(0);
+  strokeWeight(2);
+  noFill();
+  for (var i = 0; i < drawing.length; i++) {
+    var path = drawing[i];
+    beginShape();
+    for (var j = 0; j < path.length; j++) {
+      vertex(path[j].x, path[j].y);
+    }
+    endShape();
+  }
 }
 
-function mouseClicked(){
-  if(pointer.x >40 && pointer.x < 60 && pointer.y < 50 && pointer.y > 30){
-    pointer.shapeColor = "red";
-    stroke("red");
-  }
-  if(pointer.x >140 && pointer.x < 160 && pointer.y < 50 && pointer.y > 30){
-    pointer.shapeColor = "green";
-    stroke("green");
-  }
-  if(pointer.x >240 && pointer.x < 260 && pointer.y < 50 && pointer.y > 30){
-    pointer.shapeColor = "blue";
-    stroke("blue");
-  }
-  if(pointer.x >340 && pointer.x < 360 && pointer.y < 50 && pointer.y > 30){
-    background("white");
-  }
+function saveDrawing() {
+  var ref = database.ref('drawings');
+  var data = {
+    name: 'Sharnav',
+    drawing: drawing
+  };
+  var result = ref.push(data, dataSent);
+  console.log(result.key);
 
+  function dataSent(err, status) {
+    console.log(status);
+  }
+}
+
+function gotData(data) {
+  var drawings = data.val();
+  var keys = Object.keys(drawings);
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    //console.log(key);
+    var li = createElement('li', '');
+    li.class('listing');
+    var ahref = createA('#', key);
+    ahref.mousePressed(showDrawing);
+    ahref.parent(li);
+    li.parent('drawinglist');
+  }
+}
+
+function errData(err) {
+  console.log(err);
+}
+
+function showDrawing(key) {
+  key = this.html();
+  var ref = database.ref('drawings/' + key);
+  ref.once('value', oneDrawing, errData);
+
+  function oneDrawing(data) {
+    var DBdrawing = data.val();
+    drawing = DBdrawing.drawing;
+    //console.log(drawing);
+  }
 }
